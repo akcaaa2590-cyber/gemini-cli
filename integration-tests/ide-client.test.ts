@@ -24,28 +24,39 @@ describe('IDE client', () => {
   });
 
   it('should trigger openDiff when editing a file in IDE mode', async () => {
-    // 1. Setup the server
-    server = new TestMcpServer();
-    const port = await server.start();
-
-    // 2. Configure the Environment by setting all necessary env vars.
-    process.env['GEMINI_CLI_IDE_SERVER_PORT'] = String(port);
-    process.env['TERM_PROGRAM'] = 'vscode';
-
-    // 3. Set up the Workspace.
-    rig = new TestRig();
-    rig.setup('ide-open-diff-test');
-    process.env['GEMINI_CLI_IDE_WORKSPACE_PATH'] = rig.testDir!;
-
-    // 4. Run the Action.
-    await rig.run(
-      "create a file named 'test.txt' and add 'new content' as content",
-    );
-
     // The TestRig spawns the Gemini CLI in a separate child process.
     // Therefore, we cannot spy on the IdeClient directly in this test process.
     // Instead, we spy on the mock server to verify that it receives the
     // openDiff request from the CLI process.
+    server = new TestMcpServer();
+    const port = await server.start();
+    console.log(`[DEBUG] TestMcpServer started on port: ${port}`);
+
+    // 2. Configure the Environment by setting all necessary env vars.
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      GEMINI_CLI_IDE_SERVER_PORT: String(port),
+      TERM_PROGRAM: 'vscode',
+    };
+    console.log(
+      `[DEBUG] Set env vars: GEMINI_CLI_IDE_SERVER_PORT=${env['GEMINI_CLI_IDE_SERVER_PORT']}, TERM_PROGRAM=${env['TERM_PROGRAM']}`,
+    );
+
+    // 3. Set up the Workspace.
+    rig = new TestRig();
+    rig.setup('ide-open-diff-test');
+    env['GEMINI_CLI_IDE_WORKSPACE_PATH'] = rig.testDir!;
+    rig.createFile('test.txt', 'original content');
+
+    // 4. Run the Action.
+    // Use a prompt that prints the environment variables to debug CI.
+    console.log('[DEBUG] Calling rig.run...');
+    const prompt =
+      'run the command "printenv | grep -E \'TERM_PROGRAM|GEMINI_CLI_IDE_SERVER_PORT\'"';
+    await rig.run({ prompt, env });
+    console.log('[DEBUG] rig.run completed.');
+
+    // Assert that the spy was called (this is expected to fail).
     expect(server.getOpenDiffSpy()).toHaveBeenCalled();
   });
 
