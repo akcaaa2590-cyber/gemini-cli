@@ -8,7 +8,7 @@ import { Text } from 'ink';
 import { useEffect, useState } from 'react';
 import { FixedDeque } from 'mnemonist';
 import { theme } from '../semantic-colors.js';
-import { useKeypress } from '../hooks/useKeypress.js';
+import { useUIState } from '../contexts/UIStateContext.js';
 import { debugNumSpinners } from './CliSpinner.js';
 import { appEvents, AppEvent } from '../../utils/events.js';
 
@@ -108,7 +108,7 @@ export const profiler = {
 };
 
 export const DebugProfiler = () => {
-  const [showProfiler, setShowProfiler] = useState(false);
+  const { showDebugProfiler } = useUIState();
   const [forceRefresh, setForceRefresh] = useState(0);
 
   // Effect for listening to stdin for keypresses and stdout for resize events.
@@ -163,7 +163,7 @@ export const DebugProfiler = () => {
 
   // Effect for updating stats
   useEffect(() => {
-    if (!showProfiler) {
+    if (!showDebugProfiler) {
       return;
     }
     // Only update the UX infrequently as updating the UX itself will cause
@@ -173,18 +173,9 @@ export const DebugProfiler = () => {
       profiler.reportAction();
     }, 4000);
     return () => clearInterval(forceRefreshInterval);
-  }, [showProfiler]);
+  }, [showDebugProfiler]);
 
-  useKeypress(
-    (key) => {
-      if (key.ctrl && key.shift && key.name === 'p') {
-        setShowProfiler((prev) => !prev);
-      }
-    },
-    { isActive: true },
-  );
-
-  if (!showProfiler) {
+  if (!showDebugProfiler) {
     return null;
   }
 
